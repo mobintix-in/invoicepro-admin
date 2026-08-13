@@ -41,6 +41,71 @@ function StatusPill({ status }: { status: UserRow['status'] }) {
   )
 }
 
+function EmailIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5v10.5H3.75V6.75z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 7.5 7.5 5.25 7.5-5.25" />
+    </svg>
+  )
+}
+
+function GoogleIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 48 48" className="h-4 w-4">
+      <path fill="#FFC107" d="M43.61 20H42V20H24v8h11.3C33.65 32.66 29.21 36 24 36c-6.63 0-12-5.37-12-12s5.37-12 12-12c3.06 0 5.84 1.15 7.96 3.04l5.66-5.66C34.05 6.05 29.27 4 24 4 12.95 4 4 12.95 4 24s8.95 20 20 20 20-8.95 20-20c0-1.34-.14-2.65-.39-4Z" />
+      <path fill="#FF3D00" d="m6.31 14.69 6.57 4.82C14.66 15.11 18.96 12 24 12c3.06 0 5.84 1.15 7.96 3.04l5.66-5.66C34.05 6.05 29.27 4 24 4c-7.68 0-14.35 4.34-17.69 10.69Z" />
+      <path fill="#4CAF50" d="M24 44c5.17 0 9.86-1.98 13.41-5.19l-6.19-5.24A11.9 11.9 0 0 1 24 36c-5.19 0-9.61-3.32-11.28-7.95l-6.52 5.02C9.5 39.56 16.23 44 24 44Z" />
+      <path fill="#1976D2" d="M43.61 20H42V20H24v8h11.3a12.04 12.04 0 0 1-4.09 5.57l.01-.01 6.19 5.24C36.97 39.2 44 34 44 24c0-1.34-.14-2.65-.39-4Z" />
+    </svg>
+  )
+}
+
+function AuthProviderBadges({ providers }: { providers: string[] }) {
+  const normalizedProviders = [...new Set(providers.map((provider) => provider.toLowerCase()))]
+  const hasEmail = normalizedProviders.includes('email')
+  const hasGoogle = normalizedProviders.includes('google')
+  const otherProviders = normalizedProviders.filter(
+    (provider) => provider !== 'email' && provider !== 'google',
+  )
+
+  if (!hasEmail && !hasGoogle && otherProviders.length === 0) {
+    return <span className="text-xs text-gray-400">—</span>
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {hasEmail && (
+        <span
+          title="Email sign-in enabled"
+          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-semibold text-gray-700"
+        >
+          <EmailIcon />
+          Email
+        </span>
+      )}
+      {hasGoogle && (
+        <span
+          title="Google sign-in enabled"
+          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2 py-1 text-[11px] font-semibold text-gray-700"
+        >
+          <GoogleIcon />
+          Google
+        </span>
+      )}
+      {otherProviders.map((provider) => (
+        <span
+          key={provider}
+          title={provider + ' sign-in enabled'}
+          className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-semibold capitalize text-gray-600"
+        >
+          {provider}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function actionErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'message' in error) {
     const message = String(error.message)
@@ -113,7 +178,7 @@ export default function AdminUsersPage() {
   const q = query.trim().toLowerCase()
   const filtered = q
     ? users.filter((u) =>
-        [u.fullName, u.companyName, u.email, u.phone, u.utr ?? '']
+        [u.fullName, u.companyName, u.email, u.phone, u.utr ?? '', ...u.authProviders]
           .some((v) => v.toLowerCase().includes(q)),
       )
     : users
@@ -159,11 +224,12 @@ export default function AdminUsersPage() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-          <table className="w-full min-w-[860px] text-sm">
+          <table className="w-full min-w-[1040px] text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Contact</th>
+                <th className="px-4 py-3">Login</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Plan</th>
                 <th className="px-4 py-3">UTR / Ref</th>
@@ -181,6 +247,9 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3">
                     <div className="text-gray-700">{u.email || '—'}</div>
                     <div className="text-xs text-gray-500">{u.phone || '—'}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <AuthProviderBadges providers={u.authProviders} />
                   </td>
                   <td className="px-4 py-3">
                     <StatusPill status={u.status} />

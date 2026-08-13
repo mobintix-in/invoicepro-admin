@@ -240,6 +240,7 @@ export interface UserRow {
   companyName: string
   email: string
   phone: string
+  authProviders: string[]
   createdAt: string | null
   status: SubscriptionStatus | 'none'
   utr: string | null
@@ -259,15 +260,34 @@ type ProfileWithSub = {
   subscriptions: SubRow | SubRow[] | null
 }
 
-/** Every registered user with their (optional) subscription — admins only, via RLS. */
+type AuthProviderRow = {
+  user_id: string
+  providers: string[] | null
+}
+
+/** Every registered user with their subscription and linked sign-in methods. */
 export async function listAllUsers(): Promise<UserRow[]> {
-  const { data, error } = await createClient()
-    .from('profiles')
-    .select('id, full_name, company_name, email, phone, created_at, subscriptions(status, utr, amount, plan_key, submitted_at, expires_at)')
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  if (!data) return []
-  return (data as ProfileWithSub[]).map((row) => {
+  const supabase = createClient()
+  const [profilesResult, providersResult] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, full_name, company_name, email, phone, created_at, subscriptions(status, utr, amount, plan_key, submitted_at, expires_at)')
+      .order('created_at', { ascending: false }),
+    supabase.rpc('list_user_auth_providers'),
+  ])
+
+  if (profilesResult.error) throw profilesResult.error
+  if (providersResult.error) throw providersResult.error
+  if (!profilesResult.data) return []
+
+  const providerMap = new Map(
+    ((providersResult.data ?? []) as AuthProviderRow[]).map((row) => [
+      row.user_id,
+      row.providers ?? [],
+    ]),
+  )
+
+  return (profilesResult.data as ProfileWithSub[]).map((row) => {
     const sub = Array.isArray(row.subscriptions) ? row.subscriptions[0] : row.subscriptions
     return {
       userId: row.id,
@@ -275,6 +295,7 @@ export async function listAllUsers(): Promise<UserRow[]> {
       companyName: row.company_name,
       email: row.email,
       phone: row.phone,
+      authProviders: providerMap.get(row.id) ?? [],
       createdAt: row.created_at,
       status: (sub?.status as SubscriptionStatus | undefined) ?? 'none',
       utr: sub?.utr ?? null,
