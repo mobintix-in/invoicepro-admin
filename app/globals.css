@@ -3,13 +3,26 @@
 :root {
   --background: #f9fafb;
   --foreground: #111827;
+  --surface: #ffffff;
+  --muted: #6b7280;
+  --border: #e5e7eb;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-gold-50:  #eef3fa;
+  --color-gold-100: #dbe5f5;
+  --color-gold-200: #b8ccec;
+  --color-gold-400: #3b65b0;
+  --color-gold-500: #22458c;
+  --color-gold-600: #19346b;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: Georgia, "Times New Roman", serif;
 }
 
 body {
