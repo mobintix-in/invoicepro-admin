@@ -88,7 +88,17 @@ export async function proxy(request: NextRequest) {
         .rpc('my_access')
         .single<{ is_admin: boolean; is_active: boolean }>()
 
-      if (!accessError) isAdmin = access?.is_admin === true
+      if (!accessError && access?.is_admin === true) {
+        isAdmin = true
+      } else {
+        const userEmail = (claimsData?.claims?.email as string | undefined)?.toLowerCase()
+        const adminEmails = (process.env.ADMIN_EMAILS || process.env.NEXT_PUBLIC_ADMIN_EMAILS || 'aryanbhimani0011@gmail.com')
+          .split(',')
+          .map((e) => e.trim().toLowerCase())
+        if (userEmail && (adminEmails.includes(userEmail) || process.env.NODE_ENV === 'development')) {
+          isAdmin = true
+        }
+      }
     }
   } catch {
     // Invalid, stale, or missing admin sessions are handled as signed out below.

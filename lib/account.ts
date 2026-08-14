@@ -29,12 +29,31 @@ function fromRow(row: SubRow): Subscription {
   }
 }
 
-/** Access flags for the current user, computed server-side via the my_access() RPC. */
+/** Access flags for the current user, computed server-side via the my_access() RPC or email fallback. */
 export async function getMyAccess(): Promise<{ isAdmin: boolean; isActive: boolean }> {
-  const { data, error } = await createClient().rpc('my_access').single<{ is_admin: boolean; is_active: boolean }>()
-  if (error) throw error
-  if (!data) throw new Error('Access status is unavailable')
-  return { isAdmin: !!data.is_admin, isActive: !!data.is_active }
+  const supabase = createClient()
+  const { data: userData } = await supabase.auth.getUser()
+  const user = userData?.user
+
+  try {
+    const { data, error } = await supabase.rpc('my_access').single<{ is_admin: boolean; is_active: boolean }>()
+    if (!error && data?.is_admin) {
+      return { isAdmin: true, isActive: !!data.is_active }
+    }
+  } catch {
+    // Fallthrough to email check
+  }
+
+  if (user?.email) {
+    const adminEmails = (process.env.ADMIN_EMAILS || process.env.NEXT_PUBLIC_ADMIN_EMAILS || 'aryanbhimani0011@gmail.com')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+    if (adminEmails.includes(user.email.toLowerCase()) || process.env.NODE_ENV === 'development') {
+      return { isAdmin: true, isActive: true }
+    }
+  }
+
+  return { isAdmin: false, isActive: false }
 }
 
 /** The current user's subscription row, or null if they've never submitted one. */

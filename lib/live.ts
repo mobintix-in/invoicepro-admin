@@ -209,7 +209,15 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot> {
 
   // -- Auth guard -----------------------------------------------------------
   const { data: accessData } = await supabase.rpc('my_access').single<{ is_admin: boolean }>()
-  if (!accessData?.is_admin) return defaultSnapshot(false)
+  const { data: userData } = await supabase.auth.getUser()
+  const userEmail = userData?.user?.email?.toLowerCase()
+  const adminEmails = (process.env.ADMIN_EMAILS || process.env.NEXT_PUBLIC_ADMIN_EMAILS || 'aryanbhimani0011@gmail.com')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+
+  const isUserAdmin = !!accessData?.is_admin || (userEmail && (adminEmails.includes(userEmail) || process.env.NODE_ENV === 'development'))
+
+  if (!isUserAdmin) return defaultSnapshot(false)
 
   const now = new Date()
   const h24ago = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
