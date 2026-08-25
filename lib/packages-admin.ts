@@ -15,16 +15,6 @@ export interface PackageInput {
   active: boolean
 }
 
-export async function listActivePackages(): Promise<Package[]> {
-  const { data, error } = await createClient()
-    .from('packages')
-    .select(PACKAGE_COLUMNS)
-    .eq('active', true)
-    .order('sort_order', { ascending: true })
-  if (error) throw error
-  return (data as PackageRow[] | null)?.map(rowToPackage) ?? []
-}
-
 export async function listAllPackagesAdmin(): Promise<Package[]> {
   const { data, error } = await createClient()
     .from('packages')

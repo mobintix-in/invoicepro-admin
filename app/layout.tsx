@@ -15,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "InvoicePro Admin – Control Panel",
-  description: "Manage users, subscriptions, blog posts, packages, and messages",
+  description:
+    "Manage users, subscriptions, blog posts, packages, and messages",
 };
 
 export default function RootLayout({

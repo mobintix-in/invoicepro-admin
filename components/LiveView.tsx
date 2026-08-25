@@ -212,7 +212,7 @@ export default function LiveView({ initial }: { initial: LiveSnapshot }) {
           }
         };
       }
-    } catch (e) {
+    } catch {
       // BroadcastChannel optional
     }
 

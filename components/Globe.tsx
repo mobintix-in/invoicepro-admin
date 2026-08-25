@@ -53,7 +53,6 @@ export default function Globe({ points }: { points: GlobePoint[] }) {
   const phi = useRef(0);
   const width = useRef(0);
   const dragging = useRef<number | null>(null);
-  const offset = useRef(0);
 
   // Zoom is held in a ref (read every frame by the render loop) and mirrored
   // into state purely so the +/- buttons can disable at the limits.
