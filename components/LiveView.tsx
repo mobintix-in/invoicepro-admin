@@ -273,19 +273,19 @@ export default function LiveView({ initial }: { initial: LiveSnapshot }) {
 
         {/* Headline stats */}
         <div className="grid grid-cols-2 gap-4">
-          <Stat label="Visitors now"  value={snap.visitorsNow}  hint="Last 5 minutes" />
-          <Stat label="Total sales"   value={snap.totalSales}   hint="Last 24h" />
-          <Stat label="Sessions"      value={snap.sessions}     hint="Last 24h" />
-          <Stat label="Orders"        value={snap.orders}       hint="Last 24h" />
+          <Stat label="Visitors now"  value={snap.visitorsNow}  hint="Active in last 5m" />
+          <Stat label="Total revenue" value={snap.totalSales}   hint="Invoices & Subscriptions (24h)" />
+          <Stat label="Live Sessions" value={snap.sessions}     hint="Last 24h" />
+          <Stat label="Invoices (24h)" value={snap.orders}      hint="Total invoices created" />
         </div>
 
-        {/* Customer behaviour */}
-        <Panel title="Customer behaviour">
+        {/* Invoice breakdown */}
+        <Panel title="Invoice activity & status (24h)">
           <div className="grid grid-cols-3 divide-x divide-border">
             {[
-              { label: "Active bags",  value: snap.activeBags  },
-              { label: "Checking out", value: snap.checkingOut },
-              { label: "Purchased",    value: snap.purchased   },
+              { label: "Draft invoices", value: snap.activeBags  },
+              { label: "Sent / Pending", value: snap.checkingOut },
+              { label: "Paid & Settled", value: snap.purchased   },
             ].map((s, i) => (
               <div key={s.label} className={i === 0 ? "pr-3" : "px-3"}>
                 <p className="text-[11px] text-muted">{s.label}</p>

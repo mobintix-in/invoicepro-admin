@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { isSupabaseConfigured } from '@/lib/supabase/client'
 import { getMyAccess } from '@/lib/account'
-import { formatLimit, toPackageKey, type Package } from '@/lib/packages'
+import { formatLimit, formatDuration, formatBillingCycle, toPackageKey, type Package } from '@/lib/packages'
 import {
   listAllPackagesAdmin,
   savePackage,
@@ -17,6 +17,7 @@ type FormState = {
   key: string
   name: string
   priceInr: string
+  durationMonths: string
   tagline: string
   featuresText: string
   invoiceLimitText: string
@@ -31,6 +32,7 @@ const EMPTY_FORM: FormState = {
   key: '',
   name: '',
   priceInr: '0',
+  durationMonths: '1',
   tagline: '',
   featuresText: '',
   invoiceLimitText: '',
@@ -47,6 +49,7 @@ function toInput(f: FormState): PackageInput {
     key: f.key,
     name: f.name,
     priceInr: parseInt(f.priceInr, 10) || 0,
+    durationMonths: Math.max(1, parseInt(f.durationMonths, 10) || 1),
     tagline: f.tagline,
     features: f.featuresText.split('\n').map((s) => s.trim()).filter(Boolean),
     invoiceLimit: limit === '' ? null : Math.max(0, parseInt(limit, 10) || 0),
@@ -93,7 +96,7 @@ export default function AdminPackagesPage() {
   function startNew() {
     setError(null)
     setKeyEdited(false)
-    setForm({ ...EMPTY_FORM, sortOrder: String(packages.length + 1) })
+    setForm({ ...EMPTY_FORM, durationMonths: '1', sortOrder: String(packages.length + 1) })
   }
 
   function startEdit(p: Package) {
@@ -104,6 +107,7 @@ export default function AdminPackagesPage() {
       key: p.key,
       name: p.name,
       priceInr: String(p.priceInr),
+      durationMonths: String(p.durationMonths || 1),
       tagline: p.tagline,
       featuresText: p.features.join('\n'),
       invoiceLimitText: p.invoiceLimit === null ? '' : String(p.invoiceLimit),
@@ -238,10 +242,10 @@ export default function AdminPackagesPage() {
             />
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-                Price (₹ / month)
+                Price (₹)
               </label>
               <input
                 id="price"
@@ -251,6 +255,39 @@ export default function AdminPackagesPage() {
                 onChange={(e) => update('priceInr', e.target.value)}
                 className={inputClass}
               />
+            </div>
+            <div>
+              <label htmlFor="duration" className="block text-sm font-medium text-gray-700">
+                Duration (Months)
+              </label>
+              <input
+                id="duration"
+                type="number"
+                min="1"
+                value={form.durationMonths}
+                onChange={(e) => update('durationMonths', e.target.value)}
+                className={inputClass}
+              />
+              <div className="mt-1.5 flex gap-1">
+                {[
+                  { label: '1M', months: '1' },
+                  { label: '6M', months: '6' },
+                  { label: '1Y', months: '12' },
+                ].map((preset) => (
+                  <button
+                    key={preset.months}
+                    type="button"
+                    onClick={() => update('durationMonths', preset.months)}
+                    className={`rounded px-2 py-0.5 text-[11px] font-medium transition ${
+                      form.durationMonths === preset.months
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div>
               <label htmlFor="limit" className="block text-sm font-medium text-gray-700">
@@ -265,7 +302,7 @@ export default function AdminPackagesPage() {
                 placeholder="Unlimited"
                 className={inputClass}
               />
-              <p className="mt-1 text-xs text-gray-400">Blank = unlimited. Enforced per month.</p>
+              <p className="mt-1 text-xs text-gray-400">Blank = unlimited / month.</p>
             </div>
             <div>
               <label htmlFor="order" className="block text-sm font-medium text-gray-700">
@@ -391,10 +428,11 @@ export default function AdminPackagesPage() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-          <table className="w-full min-w-[820px] text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <th className="px-4 py-3">Package</th>
+                <th className="px-4 py-3">Duration</th>
                 <th className="px-4 py-3">Price</th>
                 <th className="px-4 py-3">Invoice limit</th>
                 <th className="px-4 py-3">Status</th>
@@ -415,7 +453,17 @@ export default function AdminPackagesPage() {
                     </div>
                     <div className="font-mono text-xs text-gray-400">{p.key}</div>
                   </td>
-                  <td className="px-4 py-3 text-gray-700">₹{p.priceInr.toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                      {formatDuration(p.durationMonths)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-700 font-medium">
+                    ₹{p.priceInr.toLocaleString('en-IN')}
+                    <span className="text-xs font-normal text-gray-400">
+                      {' '}{formatBillingCycle(p.durationMonths)}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-gray-600">{formatLimit(p.invoiceLimit)}</td>
                   <td className="px-4 py-3">
                     {p.active ? (

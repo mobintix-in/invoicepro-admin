@@ -6,6 +6,7 @@ type SubRow = {
   utr: string | null
   amount: number | null
   plan_key?: string | null
+  plan_months?: number | null
   submitted_at: string | null
   expires_at: string | null
 }
@@ -73,6 +74,7 @@ export interface UserRow {
   utr: string | null
   amount: number | null
   planKey: string | null
+  planMonths: number | null
   submittedAt: string | null
   expiresAt: string | null
 }
@@ -98,7 +100,7 @@ export async function listAllUsers(): Promise<UserRow[]> {
   const [profilesResult, providersResult] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, full_name, company_name, email, phone, created_at, subscriptions(status, utr, amount, plan_key, submitted_at, expires_at)')
+      .select('id, full_name, company_name, email, phone, created_at, subscriptions(status, utr, amount, plan_key, plan_months, submitted_at, expires_at)')
       .order('created_at', { ascending: false }),
     supabase.rpc('list_user_auth_providers'),
   ])
@@ -128,6 +130,7 @@ export async function listAllUsers(): Promise<UserRow[]> {
       utr: sub?.utr ?? null,
       amount: sub?.amount != null ? Number(sub.amount) : null,
       planKey: sub?.plan_key ?? null,
+      planMonths: sub?.plan_months != null ? Number(sub.plan_months) : null,
       submittedAt: sub?.submitted_at ?? null,
       expiresAt: sub?.expires_at ?? null,
     }
@@ -137,8 +140,8 @@ export async function listAllUsers(): Promise<UserRow[]> {
 /** Grant/renew an active subscription for a user (works even if they have no row yet). */
 export async function grantSubscription(
   userId: string,
-  planMonths = SUBSCRIPTION.planMonths,
-  planKey = 'starter',
+  planMonths: number = SUBSCRIPTION.planMonths,
+  planKey = 'monthly',
 ): Promise<void> {
   const now = new Date()
   const expires = addMonthsClamped(now, planMonths)

@@ -6,6 +6,7 @@ export interface PackageInput {
   key: string
   name: string
   priceInr: number
+  durationMonths: number
   tagline: string
   features: string[]
   invoiceLimit: number | null
@@ -29,6 +30,7 @@ export async function savePackage(input: PackageInput): Promise<void> {
     key: input.key.trim(),
     name: input.name.trim(),
     price_inr: Math.max(0, Math.round(input.priceInr)),
+    duration_months: Math.max(1, Math.round(input.durationMonths) || 1),
     tagline: input.tagline.trim(),
     features: input.features.map((f) => f.trim()).filter(Boolean),
     invoice_limit: input.invoiceLimit,

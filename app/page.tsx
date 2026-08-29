@@ -12,6 +12,8 @@ import {
   type UserRow,
 } from '@/lib/account'
 
+import { formatDuration } from '@/lib/packages'
+
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
   return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(new Date(iso))
@@ -148,13 +150,17 @@ export default function AdminUsersPage() {
       .finally(() => setChecking(false))
   }, [router, load])
 
-  async function act(userId: string, action: 'grant' | 'reject' | 'revoke') {
-    setBusyId(userId)
+  async function act(u: UserRow, action: 'grant' | 'reject' | 'revoke') {
+    setBusyId(u.userId)
     setActionError(null)
     try {
-      if (action === 'grant') await grantSubscription(userId)
-      else if (action === 'reject') await rejectSubscription(userId)
-      else await revokeSubscription(userId)
+      if (action === 'grant') {
+        await grantSubscription(u.userId, u.planMonths || 1, u.planKey || 'monthly')
+      } else if (action === 'reject') {
+        await rejectSubscription(u.userId)
+      } else {
+        await revokeSubscription(u.userId)
+      }
       await load()
     } catch (error) {
       setActionError(actionErrorMessage(error))
@@ -259,9 +265,16 @@ export default function AdminUsersPage() {
                   </td>
                   <td className="px-4 py-3">
                     {u.planKey ? (
-                      <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold capitalize text-indigo-700">
-                        {u.planKey}
-                      </span>
+                      <div>
+                        <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold capitalize text-indigo-700">
+                          {u.planKey}
+                        </span>
+                        {u.planMonths && (
+                          <div className="mt-0.5 text-[11px] text-gray-500 font-medium">
+                            {formatDuration(u.planMonths)}
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-xs text-gray-400">—</span>
                     )}
@@ -289,14 +302,14 @@ export default function AdminUsersPage() {
                       {u.status === 'pending' ? (
                         <>
                           <button
-                            onClick={() => act(u.userId, 'grant')}
+                            onClick={() => act(u, 'grant')}
                             disabled={busyId === u.userId}
                             className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-green-700 disabled:opacity-50"
                           >
                             {busyId === u.userId ? 'Approving…' : 'Approve'}
                           </button>
                           <button
-                            onClick={() => act(u.userId, 'reject')}
+                            onClick={() => act(u, 'reject')}
                             disabled={busyId === u.userId}
                             className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                           >
@@ -305,7 +318,7 @@ export default function AdminUsersPage() {
                         </>
                       ) : u.status === 'active' ? (
                         <button
-                          onClick={() => act(u.userId, 'revoke')}
+                          onClick={() => act(u, 'revoke')}
                           disabled={busyId === u.userId}
                           className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
                         >
@@ -313,7 +326,7 @@ export default function AdminUsersPage() {
                         </button>
                       ) : (
                         <button
-                          onClick={() => act(u.userId, 'grant')}
+                          onClick={() => act(u, 'grant')}
                           disabled={busyId === u.userId}
                           className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
                         >

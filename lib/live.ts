@@ -105,20 +105,19 @@ function countryToCoords(country: string): [number, number] {
   return COUNTRY_COORDS[country] ?? [20.6, 78.9]
 }
 
-function formatSales(cents: number): string {
-  if (cents === 0) return '$0'
-  const dollars = cents / 100
-  return new Intl.NumberFormat('en-US', {
+function formatSales(inr: number): string {
+  if (!inr || inr === 0) return '₹0'
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'INR',
     maximumFractionDigits: 0,
-  }).format(dollars)
+  }).format(inr)
 }
 
 // ---------------------------------------------------------------------------
 // Rich default snapshot (used when database has no session rows yet)
 // ---------------------------------------------------------------------------
-function defaultSnapshot(eventsReady: boolean, orders = 0, totalSalesCents = 0, activeBags = 0, checkingOut = 0, purchased = 0): LiveSnapshot {
+function defaultSnapshot(eventsReady: boolean, orders = 0, totalSalesInr = 0, activeBags = 0, checkingOut = 0, purchased = 0): LiveSnapshot {
   const now = new Date()
   const nowIso = now.toISOString()
   const m2Ago = new Date(now.getTime() - 2 * 60 * 1000).toISOString()
@@ -129,7 +128,7 @@ function defaultSnapshot(eventsReady: boolean, orders = 0, totalSalesCents = 0, 
     takenAt: nowIso,
     eventsReady,
     visitorsNow: 2,
-    totalSales: formatSales(totalSalesCents),
+    totalSales: formatSales(totalSalesInr),
     sessions: 14,
     orders,
     activeBags: activeBags || 1,
@@ -231,34 +230,45 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot> {
 
   const eventsReady = !tableCheck
 
-  // -- Orders & sales -------------------------------------------------------
-  const [{ count: orders }, { data: salesData }, { data: bagData }] =
+  // -- Invoices & sales -------------------------------------------------------
+  const [{ count: totalInvoices }, { data: invoiceSalesData }, { data: invoiceStatusData }, { data: subscriptionSalesData }] =
     await Promise.all([
       supabase
-        .from('orders')
+        .from('invoices')
         .select('id', { count: 'exact', head: true })
         .gte('created_at', h24ago),
       supabase
-        .from('orders')
-        .select('total_cents')
+        .from('invoices')
+        .select('total')
         .gte('created_at', h24ago)
         .eq('status', 'paid'),
       supabase
-        .from('carts')
+        .from('invoices')
         .select('status')
-        .in('status', ['active', 'checkout', 'purchased']),
+        .gte('created_at', h24ago),
+      supabase
+        .from('subscriptions')
+        .select('amount')
+        .gte('created_at', h24ago)
+        .eq('status', 'active'),
     ])
 
-  const totalSalesCents = (salesData ?? []).reduce(
-    (sum: number, r: { total_cents: number }) => sum + (r.total_cents ?? 0),
+  const invoiceSalesInr = (invoiceSalesData ?? []).reduce(
+    (sum: number, r: { total: number }) => sum + Number(r.total || 0),
     0,
   )
-  const activeBags   = (bagData ?? []).filter((c: { status: string }) => c.status === 'active').length
-  const checkingOut  = (bagData ?? []).filter((c: { status: string }) => c.status === 'checkout').length
-  const purchased    = (bagData ?? []).filter((c: { status: string }) => c.status === 'purchased').length
+  const subSalesInr = (subscriptionSalesData ?? []).reduce(
+    (sum: number, r: { amount: number }) => sum + Number(r.amount || 0),
+    0,
+  )
+  const totalSalesInr = invoiceSalesInr + subSalesInr
+
+  const activeBags   = (invoiceStatusData ?? []).filter((c: { status: string }) => c.status === 'draft').length
+  const checkingOut  = (invoiceStatusData ?? []).filter((c: { status: string }) => c.status === 'sent').length
+  const purchased    = (invoiceStatusData ?? []).filter((c: { status: string }) => c.status === 'paid').length
 
   if (!eventsReady) {
-    return defaultSnapshot(false, orders ?? 0, totalSalesCents, activeBags, checkingOut, purchased)
+    return defaultSnapshot(false, totalInvoices ?? 0, totalSalesInr, activeBags, checkingOut, purchased)
   }
 
   const [
@@ -294,7 +304,7 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot> {
 
   // If no database rows exist yet, return rich default snapshot so screen is never blank
   if (!sessionRows || sessionRows.length === 0) {
-    return defaultSnapshot(true, orders ?? 0, totalSalesCents, activeBags, checkingOut, purchased)
+    return defaultSnapshot(true, totalInvoices ?? 0, totalSalesInr, activeBags, checkingOut, purchased)
   }
 
   // Sessions by hour
@@ -382,9 +392,9 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot> {
     takenAt: now.toISOString(),
     eventsReady: true,
     visitorsNow: visitorsNow ?? liveSessions.filter(s => s.live).length,
-    totalSales: formatSales(totalSalesCents),
+    totalSales: formatSales(totalSalesInr),
     sessions: sessionRows.length,
-    orders: orders ?? 0,
+    orders: totalInvoices ?? 0,
     activeBags,
     checkingOut,
     purchased,
