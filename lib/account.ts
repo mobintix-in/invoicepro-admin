@@ -97,20 +97,31 @@ type AuthProviderRow = {
 /** Every registered user with their subscription and linked sign-in methods. */
 export async function listAllUsers(): Promise<UserRow[]> {
   const supabase = createClient()
+
+  const profilesPromise = supabase
+    .from('profiles')
+    .select('id, full_name, company_name, email, phone, created_at, subscriptions(status, utr, amount, plan_key, plan_months, submitted_at, expires_at)')
+    .order('created_at', { ascending: false })
+
+  const providersPromise = (async () => {
+    try {
+      return await supabase.rpc('list_user_auth_providers')
+    } catch (err) {
+      return { data: null, error: err }
+    }
+  })()
+
   const [profilesResult, providersResult] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('id, full_name, company_name, email, phone, created_at, subscriptions(status, utr, amount, plan_key, plan_months, submitted_at, expires_at)')
-      .order('created_at', { ascending: false }),
-    supabase.rpc('list_user_auth_providers'),
+    profilesPromise,
+    providersPromise,
   ])
 
   if (profilesResult.error) throw profilesResult.error
-  if (providersResult.error) throw providersResult.error
+  if (providersResult.error) console.warn('Could not load auth providers:', providersResult.error)
   if (!profilesResult.data) return []
 
   const providerMap = new Map(
-    ((providersResult.data ?? []) as AuthProviderRow[]).map((row) => [
+    ((Array.isArray(providersResult?.data) ? providersResult.data : []) as AuthProviderRow[]).map((row) => [
       row.user_id,
       row.providers ?? [],
     ]),

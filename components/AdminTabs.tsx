@@ -2,14 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Activity, Layers3, MessageSquareText, Newspaper, UsersRound } from 'lucide-react'
+import { Layers3, UsersRound } from 'lucide-react'
 
 const tabs = [
   { name: 'Users', href: '/', icon: UsersRound },
-  { name: 'Live View', href: '/live-view', icon: Activity },
-  { name: 'Blog', href: '/blog', icon: Newspaper },
   { name: 'Packages', href: '/packages', icon: Layers3 },
-  { name: 'Messages', href: '/messages', icon: MessageSquareText },
 ]
 
 export default function AdminTabs({ shell = false }: { shell?: boolean }) {
