@@ -78,12 +78,13 @@ export async function proxy(request: NextRequest) {
   let isAdmin = false
 
   try {
-    const { data: claimsData, error: claimsError } =
-      await supabase.auth.getClaims()
-    hasVerifiedIdentity =
-      !claimsError && typeof claimsData?.claims?.sub === 'string'
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+    hasVerifiedIdentity = !userError && typeof user?.id === 'string'
 
-    if (hasVerifiedIdentity) {
+    if (hasVerifiedIdentity && user) {
       const { data: access, error: accessError } = await supabase
         .rpc('my_access')
         .single<{ is_admin: boolean; is_active: boolean }>()
@@ -91,7 +92,7 @@ export async function proxy(request: NextRequest) {
       if (!accessError && access?.is_admin === true) {
         isAdmin = true
       } else {
-        const userEmail = (claimsData?.claims?.email as string | undefined)?.toLowerCase()
+        const userEmail = user.email?.toLowerCase()
         const adminEmails = (process.env.ADMIN_EMAILS || process.env.NEXT_PUBLIC_ADMIN_EMAILS || 'aryanbhimani0011@gmail.com')
           .split(',')
           .map((e) => e.trim().toLowerCase())
